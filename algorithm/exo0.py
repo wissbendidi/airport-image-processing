@@ -1,10 +1,12 @@
-from fonctions import numpy 
-import cv2 
-from fonctions import myutil
-import math
-from fonctions import strel
-from fonctions import first_functions
-
+author = "wissal bendidi"
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import cv2
+import numpy as np
+from functions.myutil import myseuil_interactif, seuil
+from functions import strel
+from functions import first_functions
 
 
 img=cv2.imread ("aeroport1.png")

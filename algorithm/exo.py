@@ -1,79 +1,69 @@
+author = "wissal bendidi"
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import cv2
-import numpy 
-from functions import myutil
-import math
+import numpy as np
+from functions.myutil import myseuil_interactif, seuil
 from functions import strel
 from functions import first_functions
 
+def process_image(image_path):
+    # Read the image in grayscale
+    picture = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if picture is None:
+        print(f"Error: Image not found at {image_path}")
+        return
 
-'''
-picture = cv2.imread("text4.png", cv2.IMREAD_GRAYSCALE)
-E= strel.build('square', 50)
-#image = first_functions.myopen(picture, E)
-image = first_functions.myclose(picture, E)
-result = image - picture
-s= myutil.myseuil_interactif(result)
-#s=36
-im= myutil.seuil(result, s)
+    # Define angles and initialize min_pixel_image
+    angles = np.arange(-90, 91, 1)
+    min_pixel_image = np.full(picture.shape, 255, dtype=np.uint8)
 
-cv2.imshow("image", im)  
-cv2.waitKey(0)
-cv2.destroyAllWindows()    '''
+    # Perform morphological operations
+    for angle in angles:
+        struct_element = strel.build('line', 35, angle)
+        image_closed = first_functions.myclose(picture, struct_element)
+        min_pixel_image = np.minimum(min_pixel_image, image_closed)
 
+    # Thresholding
+    image_bin = seuil(min_pixel_image, 32)
 
-"""
-picture = cv2.imread("rice.png", cv2.IMREAD_GRAYSCALE)
-E= strel.build('square', 50)
-image = first_functions.myopen(picture, E)
-#image = first_functions.myclose(picture, E)
-result = picture - image
-#s= myutil.myseuil_interactif(result)
-s=50
-im= myutil.seuil(result, s)
-im[:,0] = 0
-im[:,-1] = 0
-im[0,:] = 0
-im[-1,:] = 0
+    # Display intermediate result
+    cv2.imshow("Binary Image", image_bin)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
-i = 1
-image_bin = im.copy()
-while numpy.sum(image_bin)!= 0:
-    E= strel.build('disk', i)
-    image_bin = first_functions.myopen(im, E)
-    i+=0.1
-t = (i-0.1)*2
-print (t)
+    # Open and close operations
+    image_bin1 = first_functions.myopen(image_bin, strel.build('square', 2))
+    image_bin2 = first_functions.myclose(image_bin1, strel.build('square', 2))
 
-cv2.imshow("image", first_functions.myopen(im, strel.build('disk', 9.2)))  
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-"""
+    # Gradient for contours
+    contours = first_functions.mygradient(image_bin2, strel.build("square", 1))
 
-picture = cv2.imread("images/aeroport2.png", cv2.IMREAD_GRAYSCALE)
-angles = numpy.arange(-90, 91, 1)
-min_pixel_image = numpy.full(picture.shape, 255, dtype=numpy.uint8)
-for angle in angles:
-    struct_element = strel.build('line',35, angle)
-    image_closed = first_functions.myclose(picture, struct_element)
-    min_pixel_image = numpy.minimum(min_pixel_image, image_closed)
+    # Draw contours in red on the original image
+    picture = cv2.imread(image_path)
+    picture[contours > 0] = [0, 0, 255]
 
-#s= myutil.myseuil_interactif(min_pixel_image)
+    # Display final result
+    cv2.imshow("Contours", picture)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
+def main():
+    # Ensure an argument is provided
+    if len(sys.argv) != 2:
+        print("Usage: python algorithm.py <image_filename>")
+        return
 
-image_bin = myutil.seuil(min_pixel_image, 32)
-cv2.imshow("image", image_bin)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+    # Get the image filename from the command-line arguments
+    image_filename = sys.argv[1]
 
-image_bin1=first_functions.myopen(image_bin, strel.build('square', 2))
+    # Build the full path to the image
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    image_path = os.path.join(script_dir, "../images", image_filename)
 
+    # Process the image
+    process_image(image_path)
 
-image_bin2=first_functions.myclose(image_bin1, strel.build('square', 2))
-
-contours = first_functions.mygradient(image_bin2, strel.build("square", 1))
-
-picture = cv2.imread("aeroport2.png")
-picture[contours > 0] = [0,0,255]
-cv2.imshow("image", picture)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()
