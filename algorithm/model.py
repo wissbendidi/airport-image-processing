@@ -8,41 +8,35 @@ from functions.myutil import myseuil_interactif, seuil
 from functions import strel
 from functions import first_functions
 
+
 def process_image(image_path):
-    # Read the image in grayscale
-    picture = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    # Read the image in color
+    picture = cv2.imread(image_path)
     if picture is None:
         print(f"Error: Image not found at {image_path}")
         return
 
-    # Define angles and initialize min_pixel_image
-    angles = np.arange(-90, 91, 1)
-    min_pixel_image = np.full(picture.shape, 255, dtype=np.uint8)
+    # Convert the image to HSV color space
+    hsv_image = cv2.cvtColor(picture, cv2.COLOR_BGR2HSV)
 
-    # Perform morphological operations
-    for angle in angles:
-        struct_element = strel.build('line', 35, angle)
-        image_closed = first_functions.myclose(picture, struct_element)
-        min_pixel_image = np.minimum(min_pixel_image, image_closed)
+    # Define HSV color range for detection (adjust these values based on your image)
+    lower_hue = np.array([H_MIN, S_MIN, V_MIN])  # Set your lower bounds
+    upper_hue = np.array([H_MAX, S_MAX, V_MAX])  # Set your upper bounds
 
-    # Thresholding
-    image_bin = seuil(min_pixel_image, 32)
+    # Create a mask for the defined color range
+    mask = cv2.inRange(hsv_image, lower_hue, upper_hue)
 
-    # Display intermediate result
-    cv2.imshow("Binary Image", image_bin)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # Perform morphological operations to clean the mask
+    kernel = np.ones((5, 5), np.uint8)  # You can adjust the size based on your needs
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-    # Open and close operations
-    image_bin1 = first_functions.myopen(image_bin, strel.build('square', 2))
-    image_bin2 = first_functions.myclose(image_bin1, strel.build('square', 2))
-
-    # Gradient for contours
-    contours = first_functions.mygradient(image_bin2, strel.build("square", 1))
+    # Find contours from the mask
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Draw contours in red on the original image
-    picture = cv2.imread(image_path)
-    picture[contours > 0] = [0, 0, 255]
+    for contour in contours:
+        cv2.drawContours(picture, [contour], -1, (0, 0, 255), 2)  # Red color in BGR
 
     # Display final result
     cv2.imshow("Contours", picture)
@@ -60,7 +54,7 @@ def main():
 
     # Build the full path to the image
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(script_dir, "../images", image_filename)
+    image_path = os.path.join(script_dir, "../Airport", image_filename)
 
     # Process the image
     process_image(image_path)
